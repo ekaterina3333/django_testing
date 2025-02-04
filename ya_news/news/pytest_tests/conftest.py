@@ -1,7 +1,8 @@
-import pytest
-
 from datetime import timedelta as td
+
 from django.utils import timezone as tz
+
+import pytest
 
 from news.constants import NEWS_COUNT_ON_HOME_PAGE
 from news.models import News, Comment
@@ -28,11 +29,6 @@ def news(author):
         text='Текст заметки',
     )
     return news
-
-
-@pytest.fixture
-def ides(news):
-    return news.id,
 
 
 @pytest.fixture

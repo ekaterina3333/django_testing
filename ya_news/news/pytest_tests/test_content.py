@@ -37,7 +37,7 @@ def test_detail_form(author_client, news, form_data):
     response = author_client.get(url, data=form_data)
     form = response.context['form']
     assert 'form' in response.context
-    assert type(form) == CommentForm
+    assert isinstance(form, CommentForm)
 
 
 def test_detail_page_contains_form_for_anonymous(client, news):

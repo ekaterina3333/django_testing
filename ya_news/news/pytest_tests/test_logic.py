@@ -1,8 +1,9 @@
+from django.urls import reverse
+
 from http import HTTPStatus
+
 import pytest
 from pytest_django.asserts import assertRedirects, assertFormError
-
-from django.urls import reverse
 
 from news.forms import BAD_WORDS, WARNING
 from news.models import Comment
@@ -26,7 +27,7 @@ def test_user_can_create_comment(author_client, author, form_data, news):
     assertRedirects(response, f'{url}#comments')
     assert Comment.objects.count() == 1 + comments_count
 
-    new_comment = Comment.objects.get()
+    new_comment = Comment.objects.latest('created')
 
     assert new_comment.text == form_data['text']
     assert new_comment.author == author
@@ -43,29 +44,28 @@ def test_user_cant_use_bad_words(author_client, news, form_data):
 
 
 def test_author_can_delete_comment(author_client, news, comment):
-    comments_count = Comment.objects.count()
     url_to_comments = reverse('news:detail', args=(news.id,)) + '#comments'
     url = reverse('news:delete', args=(comment.id,))
     response = author_client.delete(url)
     assertRedirects(response, url_to_comments)
-    assert Comment.objects.count() == comments_count - 1
+    assert Comment.objects.filter(id=comment.id).count() == 0
 
 
 def test_author_can_edit_comment(author_client, news, form_data, comment):
-    comments_count = Comment.objects.count()
     url_to_comments = reverse('news:detail', args=(news.id,)) + '#comments'
     url = reverse('news:edit', args=(comment.id,))
     response = author_client.post(url, data=form_data)
     assertRedirects(response, url_to_comments)
-    assert Comment.objects.count() == comments_count
+    updated_comment = Comment.objects.get(id=comment.id)
+    for field, value in form_data.items():
+        assert getattr(updated_comment, field) == value
 
 
 def test_user_cant_delete_comment_of_another_user(reader_client, comment):
-    comments_count = Comment.objects.count()
     url = reverse('news:delete', args=(comment.id,))
     response = reader_client.delete(url)
     assert response.status_code == HTTPStatus.NOT_FOUND
-    assert Comment.objects.count() == comments_count
+    assert Comment.objects.filter(id=comment.id).count() == 1
 
 
 def test_user_cant_edit_comment_of_another_user(
@@ -75,4 +75,7 @@ def test_user_cant_edit_comment_of_another_user(
 ):
     url = reverse('news:edit', args=(comment.id,))
     response = reader_client.post(url, data=form_data)
+    updated_comment = Comment.objects.get(id=comment.id)
+    for field, value in form_data.items():
+        assert getattr(updated_comment, field) != value
     assert response.status_code == HTTPStatus.NOT_FOUND
