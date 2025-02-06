@@ -1,8 +1,8 @@
 from datetime import timedelta as td
 
-from django.utils import timezone as tz
-
 import pytest
+from django.urls import reverse
+from django.utils import timezone as tz
 
 from news.constants import NEWS_COUNT_ON_HOME_PAGE
 from news.models import News, Comment
@@ -78,3 +78,18 @@ def reader_client(reader, client):
 @pytest.fixture
 def reader(django_user_model):
     return django_user_model.objects.create(username='Лев Простой')
+
+
+@pytest.fixture
+def detail_url(news):
+    return reverse('news:detail', args=[news.id])
+
+
+@pytest.fixture
+def delete_url(comment):
+    return reverse('news:delete', args=[comment.id])
+
+
+@pytest.fixture
+def edit_url(comment):
+    return reverse('news:edit', args=[comment.id])

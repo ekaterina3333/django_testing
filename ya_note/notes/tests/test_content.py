@@ -16,24 +16,18 @@ class TestHomePage(TestCase):
     def setUpTestData(cls):
         cls.author = User.objects.create(username='Лев Толстой')
         cls.reader = User.objects.create(username='Лев Простой')
-        all_notes = [
-            Note(title=f'Заметки {index}', text='Просто текст.',
-                 author=cls.author,
-                 slug=f'note-{index}')
-            for index in range(1)
-        ]
-        Note.objects.bulk_create(all_notes)
         cls.note = Note.objects.create(
             title='Название',
             text='Просто текст.',
-            author=cls.author
+            author=cls.author,
+            slug=f'note-{1}'
         )
 
     def test_notes_count(self):
         self.client.force_login(self.author)
         response = self.client.get(self.HOME_URL)
         object_list = response.context['object_list']
-        first_note = object_list[0]
+        first_note = Note.objects.get(slug=self.note.slug)
         self.assertIn(first_note, object_list)
 
     def test_notes_one_user(self):
@@ -52,5 +46,5 @@ class TestHomePage(TestCase):
             with self.subTest(name=name):
                 url = reverse(name, args=args)
                 response = self.client.get(url)
-                self.assertIsInstance(response.context['form'], NoteForm)
                 self.assertIn('form', response.context)
+                self.assertIsInstance(response.context['form'], NoteForm)

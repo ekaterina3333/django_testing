@@ -19,7 +19,8 @@ class TestNoteCreation(TestCase):
         cls.user = User.objects.create(username='Мимо Крокодил')
         cls.auth_client = Client()
         cls.auth_client.force_login(cls.user)
-        cls.form_data = {'text': 'Текст', 'title': 'Название'}
+        cls.form_data = {'text': 'Текст', 'title': 'Название',
+                         'slug': 'nazvanie'}
 
         cls.author = User.objects.create(username='Автор комментария')
         cls.author_client = Client()
@@ -31,6 +32,7 @@ class TestNoteCreation(TestCase):
             title='Название',
             text='Текст',
             author=cls.author,
+            slug='nazvanie'
         )
         cls.note_url = reverse('notes:success', args=None)
         cls.edit_url = reverse('notes:edit', args=(cls.note.slug,))
@@ -42,27 +44,30 @@ class TestNoteCreation(TestCase):
         notes_count = Note.objects.count()
         self.assertEqual(notes_count, initial_notes_count)
 
-    def test_user_can_create_comment(self):
+    def test_user_can_create_note(self):
+        Note.objects.all().delete()
         self.auth_client.post(self.url, data=self.form_data)
         notes_count = Note.objects.count()
         self.assertEqual(notes_count, 1)
         note = Note.objects.first()
         self.assertEqual(note.text, self.form_data['text'])
         self.assertEqual(note.title, self.form_data['title'])
-        self.assertEqual(note.author, self.author)
+        self.assertEqual(note.author, self.user)
 
     def test_two_same_slug(self):
-        self.auth_client.post(self.url, data=self.form_data)
+        Note.objects.all().delete()
+        response = self.auth_client.post(self.url, data=self.form_data)
         notes_count = Note.objects.count()
         self.assertEqual(notes_count, 1)
         response = self.auth_client.post(self.url, data=self.form_data)
         warning = self.note.slug + WARNING
-        notes_count_2 = Note.objects.count()
-        self.assertEqual(notes_count_2, 1)
+        notes_count_2 = Note.objects.count() - notes_count
+        self.assertEqual(notes_count_2, 0)
         self.assertFormError(response, form='form',
                              field='slug', errors=warning)
 
     def test_automatic_creation_slug(self):
+        Note.objects.all().delete()
         self.auth_client.post(self.url, data=self.form_data)
         note = Note.objects.first()
         max_slug_length = note._meta.get_field('slug').max_length
@@ -85,11 +90,14 @@ class TestNoteCreation(TestCase):
         self.note.refresh_from_db()
         self.assertEqual(self.note.text, self.form_data['text'])
         self.assertEqual(self.note.title, self.form_data['title'])
+        self.assertEqual(self.note.slug, self.form_data['slug'])
 
     def test_user_cant_edit_note_of_another_user(self):
+        note_from_db = Note.objects.get(slug=self.note.slug)
         response = self.reader_client.post(self.edit_url, data=self.form_data)
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
         self.note.refresh_from_db()
-        self.assertEqual(self.note.text, self.form_data['text'])
-        self.assertEqual(self.note.title, self.form_data['title'])
-        self.assertEqual(self.note.author, self.author)
+        self.assertEqual(self.note.text, note_from_db.text)
+        self.assertEqual(self.note.title, note_from_db.title)
+        self.assertEqual(self.note.author, note_from_db.author)
+        self.assertEqual(self.note.slug, note_from_db.slug)
