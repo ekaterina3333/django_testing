@@ -20,7 +20,7 @@ class TestHomePage(TestCase):
             title='Название',
             text='Просто текст.',
             author=cls.author,
-            slug=f'note-{1}'
+            slug='note'
         )
 
     def test_notes_count(self):

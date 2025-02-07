@@ -21,11 +21,10 @@ def test_anonymous_user_cant_create_comment(client, form_data, news):
 
 def test_user_can_create_comment(author_client, author, form_data, news):
     Comment.objects.all().delete()
-    comments_count = Comment.objects.count()
     url = reverse('news:detail', args=(news.id,))
     response = author_client.post(url, data=form_data)
     assertRedirects(response, f'{url}#comments')
-    assert Comment.objects.count() == 1 + comments_count
+    assert Comment.objects.count() == 1
 
     new_comment = Comment.objects.first()
 
@@ -60,6 +59,8 @@ def test_author_can_edit_comment(
     assertRedirects(response, url_to_comments)
     updated_comment = Comment.objects.get(id=comment.id)
     assert updated_comment.text == form_data['text']
+    assert updated_comment.author == author
+    assert updated_comment.news == news
 
 
 def test_user_cant_delete_comment_of_another_user(reader_client, comment):
@@ -77,5 +78,7 @@ def test_user_cant_edit_comment_of_another_user(
     url = reverse('news:edit', args=(comment.id,))
     response = reader_client.post(url, data=form_data)
     updated_comment = Comment.objects.get(id=comment.id)
-    assert updated_comment.text == comment.text
     assert response.status_code == HTTPStatus.NOT_FOUND
+    assert updated_comment.text == comment.text
+    assert updated_comment.news == comment.news
+    assert updated_comment.author == comment.author

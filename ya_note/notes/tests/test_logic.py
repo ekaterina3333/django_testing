@@ -19,9 +19,6 @@ class TestNoteCreation(TestCase):
         cls.user = User.objects.create(username='Мимо Крокодил')
         cls.auth_client = Client()
         cls.auth_client.force_login(cls.user)
-        cls.form_data = {'text': 'Текст', 'title': 'Название',
-                         'slug': 'nazvanie'}
-
         cls.author = User.objects.create(username='Автор комментария')
         cls.author_client = Client()
         cls.author_client.force_login(cls.author)
@@ -34,11 +31,17 @@ class TestNoteCreation(TestCase):
             author=cls.author,
             slug='nazvanie'
         )
+        cls.form_data = {'title': 'Название',
+                         'slug': 'nazvanie', 'author': cls.author,
+                         'text': 'Текст'}
         cls.note_url = reverse('notes:success', args=None)
         cls.edit_url = reverse('notes:edit', args=(cls.note.slug,))
         cls.delete_url = reverse('notes:delete', args=(cls.note.slug,))
 
-    def test_anonymous_user_cant_create_comment(self):
+    def setUp(self):
+        self.response = self.auth_client.post(self.url, data=self.form_data)
+
+    def test_anonymous_user_cant_create_note(self):
         initial_notes_count = Note.objects.count()
         self.client.post(self.url, data=self.form_data)
         notes_count = Note.objects.count()
@@ -55,8 +58,6 @@ class TestNoteCreation(TestCase):
         self.assertEqual(note.author, self.user)
 
     def test_two_same_slug(self):
-        Note.objects.all().delete()
-        response = self.auth_client.post(self.url, data=self.form_data)
         notes_count = Note.objects.count()
         self.assertEqual(notes_count, 1)
         response = self.auth_client.post(self.url, data=self.form_data)
@@ -91,12 +92,12 @@ class TestNoteCreation(TestCase):
         self.assertEqual(self.note.text, self.form_data['text'])
         self.assertEqual(self.note.title, self.form_data['title'])
         self.assertEqual(self.note.slug, self.form_data['slug'])
+        self.assertEqual(self.note.author, self.form_data['author'])
 
     def test_user_cant_edit_note_of_another_user(self):
-        note_from_db = Note.objects.get(slug=self.note.slug)
         response = self.reader_client.post(self.edit_url, data=self.form_data)
+        note_from_db = Note.objects.get(slug=self.note.slug)
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
-        self.note.refresh_from_db()
         self.assertEqual(self.note.text, note_from_db.text)
         self.assertEqual(self.note.title, note_from_db.title)
         self.assertEqual(self.note.author, note_from_db.author)
