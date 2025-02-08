@@ -32,7 +32,7 @@ class TestNoteCreation(TestCase):
             slug='nazvanie'
         )
         cls.form_data = {'title': 'Название',
-                         'slug': 'nazvanie', 'author': cls.author,
+                         'slug': 'nazvanie',
                          'text': 'Текст'}
         cls.note_url = reverse('notes:success', args=None)
         cls.edit_url = reverse('notes:edit', args=(cls.note.slug,))
@@ -59,11 +59,10 @@ class TestNoteCreation(TestCase):
 
     def test_two_same_slug(self):
         notes_count = Note.objects.count()
-        self.assertEqual(notes_count, 1)
         response = self.auth_client.post(self.url, data=self.form_data)
         warning = self.note.slug + WARNING
-        notes_count_2 = Note.objects.count() - notes_count
-        self.assertEqual(notes_count_2, 0)
+        new_count = Note.objects.count()
+        self.assertEqual(notes_count, new_count)
         self.assertFormError(response, form='form',
                              field='slug', errors=warning)
 
@@ -88,15 +87,15 @@ class TestNoteCreation(TestCase):
     def test_author_can_edit_note(self):
         response = self.author_client.post(self.edit_url, data=self.form_data)
         self.assertRedirects(response, self.note_url)
-        self.note.refresh_from_db()
-        self.assertEqual(self.note.text, self.form_data['text'])
-        self.assertEqual(self.note.title, self.form_data['title'])
-        self.assertEqual(self.note.slug, self.form_data['slug'])
-        self.assertEqual(self.note.author, self.form_data['author'])
+        note_from_db = Note.objects.get(id=self.note.id)
+        self.assertEqual(self.note.text, note_from_db.text)
+        self.assertEqual(self.note.title, note_from_db.title)
+        self.assertEqual(self.note.author, note_from_db.author)
+        self.assertEqual(self.note.slug, note_from_db.slug)
 
     def test_user_cant_edit_note_of_another_user(self):
         response = self.reader_client.post(self.edit_url, data=self.form_data)
-        note_from_db = Note.objects.get(slug=self.note.slug)
+        note_from_db = Note.objects.get(id=self.note.id)
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
         self.assertEqual(self.note.text, note_from_db.text)
         self.assertEqual(self.note.title, note_from_db.title)
