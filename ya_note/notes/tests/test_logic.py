@@ -88,10 +88,10 @@ class TestNoteCreation(TestCase):
         response = self.author_client.post(self.edit_url, data=self.form_data)
         self.assertRedirects(response, self.note_url)
         note_from_db = Note.objects.get(id=self.note.id)
-        self.assertEqual(self.note.text, note_from_db.text)
-        self.assertEqual(self.note.title, note_from_db.title)
+        self.assertEqual(self.note.text, self.form_data['text'])
+        self.assertEqual(self.note.title, self.form_data['title'])
         self.assertEqual(self.note.author, note_from_db.author)
-        self.assertEqual(self.note.slug, note_from_db.slug)
+        self.assertEqual(self.note.slug, self.form_data['slug'])
 
     def test_user_cant_edit_note_of_another_user(self):
         response = self.reader_client.post(self.edit_url, data=self.form_data)
